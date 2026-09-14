@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64">
+  <defs>
+    <linearGradient id="logoWash" x1="8" x2="88" y1="10" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a9e6d0"/>
+      <stop offset="0.56" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c8d8ff"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="6" width="86" height="52" rx="14" fill="#183c34"/>
+  <path d="M13 45 C 25 25, 39 48, 52 29 S 74 20, 86 31" stroke="url(#logoWash)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+  <path d="M14 49 H84 M16 18 V50" stroke="#79b9a7" stroke-width="1.5" opacity=".5" stroke-linecap="round"/>
+  <text x="20" y="39" fill="#f4fffb" font-size="25" font-weight="800" font-family="PingFang SC, Microsoft YaHei, sans-serif">数</text>
+  <text x="49" y="39" fill="#dff8ef" font-size="25" font-weight="800" font-family="PingFang SC, Microsoft YaHei, sans-serif">蕴</text>
+  <circle cx="78" cy="19" r="3" fill="#a9e6d0"/>
+</svg>
