@@ -97,6 +97,16 @@ npm test
 
 测试会执行生产构建，并验证产品首页、品牌故事页、API 安全边界和客户端集成标记。
 
+## Cloudflare Workers 部署。
+
+项目包含独立的 `wrangler.cloudflare.jsonc`，用于把生产构建、静态资源和 D1 数据库部署到 Cloudflare Workers。
+
+```bash
+npm run deploy:cloudflare
+```
+
+首次部署前，需要通过 Wrangler 登录 Cloudflare、创建 D1 数据库、应用 `drizzle/` 中的迁移，并在 Worker 中配置 `ZHIHU_ACCESS_SECRET`。真实密钥只应通过 Cloudflare Secret 管理，不应写入配置文件。
+
 ## 主要目录。
 
 ```text
