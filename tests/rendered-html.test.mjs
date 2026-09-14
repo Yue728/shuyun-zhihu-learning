@@ -20,7 +20,7 @@ test("server-renders the Shuyun application shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>数蕴 · 知乎知识炼金助教<\/title>/i);
   assert.match(html, /id="app"/);
-  assert.match(html, /src="\/app\.js"/);
+  assert.match(html, /src="\/shuyun-workspace\.mjs"/);
 });
 
 test("health endpoint does not expose secrets", async () => {
@@ -34,7 +34,7 @@ test("ships API-aware client and social metadata", async () => {
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/shuyun-workspace.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(css, /live-search/);
   assert.match(layout, /shuyun-hackathon-cover-v4/);
