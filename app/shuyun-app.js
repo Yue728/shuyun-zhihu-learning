@@ -21,7 +21,7 @@ let diagnostics = [
   { label: "迁移题", prompt: "某条直线经过 (0,2) 且向右下降，构造一个可能的解析式。" },
 ];
 
-const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "初中数学 一次函数 k 正负 图像增减 常见错误", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。" };
+const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "一次函数 k 正负 增减性", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。" };
 const navItems = [["forge","知识炼金台","flask"],["assets","课程资产","book"],["path","学习路径","nodes"],["diagnosis","诊断与变式","file"],["review","学情复盘","chart"]];
 
 function icon(name, size = 18) {
