@@ -5,13 +5,23 @@ const cachedSources = [
 ];
 let sources = [...cachedSources];
 
-const explanations = {
+let explanations = {
   visual: { title: "从图像变化看增减性", body: "当 x 从左向右增加时，k>0 表示 y 同向增加，直线向右上方延伸；k<0 表示 y 反向减少，直线向右下方延伸。", note: "先固定 x 的增加方向，再观察 y 的变化，避免靠口诀猜方向。" },
   analogy: { title: "把斜率想成走路的坡度", body: "把 x 想成向右走的每一步，把 y 想成高度。k=2 是每向右一步上升 2；k=-2 是每向右一步下降 2，所以负斜率像一段下坡路。", note: "k 表示“每走 1 个单位，y 改变多少”，正负号表示变化方向。" },
   counter: { title: "用反例拆掉错误直觉", body: "b 只决定直线与 y 轴在哪里相交。y=-2x+100 的 b 虽然很大，但 k<0，图像仍向右下降，因此不能用 b 判断增减性。", note: "改变 b，只会让直线上下平移，不会改变它上升还是下降。" },
 };
 
-const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "一次函数 斜率 截距 常见错误 教学", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容" };
+let mistakes = [
+  { title: "混淆 k 的正负与图像方向", detail: "把 k>0 记成图像下降，或把 k<0 记成上升。" },
+  { title: "忽略自变量的增加方向", detail: "没有意识到“从左向右”对应 x 的增大。" },
+  { title: "只看 b，不看 k", detail: "比较两条直线时，只关注截距而忽略斜率。" },
+];
+let diagnostics = [
+  { label: "基础题", prompt: "判断 y=-2x+1 与 y=3x-4 的增减性，并说明依据。" },
+  { label: "迁移题", prompt: "某条直线经过 (0,2) 且向右下降，构造一个可能的解析式。" },
+];
+
+const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "初中数学 一次函数 k 正负 图像增减 常见错误", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。" };
 const navItems = [["forge","知识炼金台","flask"],["assets","课程资产","book"],["path","学习路径","nodes"],["diagnosis","诊断与变式","file"],["review","学情复盘","chart"]];
 
 function icon(name, size = 18) {
@@ -41,13 +51,13 @@ function renderView() { return ({forge:renderForge,assets:renderAssets,path:rend
 
 function renderForge() {
   const filtered = state.sourceFilter === "all" ? sources : sources.filter(s=>s.id===state.sourceFilter);
-  const source = sources.find(s=>s.id===state.selectedSource);
+  const source = sources.find(s=>s.id===state.selectedSource) || sources[0] || cachedSources[0];
   const exp = explanations[state.explanationMode];
-  const mistakes = [["混淆 k 的正负与图像方向","把 k>0 记成图像下降，或把 k<0 记成上升。"],["忽略自变量的增加方向","没有意识到“从左向右”对应 x 的增大。"],["只看 b，不看 k","比较两条直线时，只关注截距而忽略斜率。"]];
-  return `<section class="forge-grid"><section class="source-panel pane"><div class="pane-heading"><h2>知乎认知源</h2><p>来自真实教师、学生与专业答主的讨论</p></div><div class="live-search"><label for="zhihu-query">真实 API 检索</label><div><input id="zhihu-query" value="${esc(state.liveQuery)}" data-live-query maxlength="80"><button data-action="live-search" ${state.liveStatus==="loading"?"disabled":""}>${state.liveStatus==="loading"?"同步中…":"同步知乎"}</button></div><p class="live-status ${state.liveStatus}"><i></i>${esc(state.liveMessage)}</p></div><div class="filter-row">${[["all",`全部 ${sources.length}`],["visual","形象解释"],["confusion","真实困惑"],["practice","教学经验"]].map(([id,label])=>`<button class="filter ${state.sourceFilter===id?"active":""}" data-filter="${id}">${label}</button>`).join("")}</div><div class="source-list">${filtered.map(s=>`<button class="source-card ${state.selectedSource===s.id?"selected":""}" data-source="${esc(s.id)}"><span class="source-kind ${esc(s.tone)}">${esc(s.kind)}</span><strong>${esc(s.title)}</strong><p>${esc(s.excerpt)}</p><footer><span>${esc(s.meta)}</span><time>${esc(s.date)}</time></footer></button>`).join("")}</div><div class="source-trust"><b>${icon("search")}筛选原则</b><p>相关性 × 作者可信度 × 教材一致性 × 教师采纳</p></div></section>
-  <section class="alchemy-panel pane"><div class="pane-heading"><h2>知识炼金</h2><p>把社区智慧转化为可落地的教学内容</p></div><div class="pipeline">${["检索","对齐教材","提炼认知","教师确认"].map((label,i)=>`<button class="pipe-step ${state.pipeline===i?"active":state.pipeline>i?"done":""}" data-pipeline="${i}"><span>${state.pipeline>i?icon("check",14):i+1}</span><b>${label}</b><small>${["找到优质观点","匹配课程标准","形成教学内容","完善并入库"][i]}</small></button>`).join("")}</div><article class="processing-source"><div><span>当前处理的来源</span><h3>${esc(source.title)}</h3><p>${esc(source.author)} · ${esc(source.meta)}</p></div><a href="${safeUrl(source.url)}" target="_blank" rel="noreferrer">${icon("external")}查看原文</a></article><article class="alignment"><div class="section-title"><h3>对齐教材</h3><span>已匹配 2 条课程标准</span></div><div class="standard-head">人教版　八年级上册　第五章 一次函数</div><div class="standard-row"><b>5.1.1</b><span>理解一次函数概念，能根据解析式画出图像。</span></div><div class="standard-row"><b>5.1.2</b><span>理解 k 和 b 对图像与性质的影响。</span></div></article><article class="editor"><div class="section-title"><h3>提炼认知 <small>可编辑</small></h3><button>${icon("spark")}AI 提炼</button></div><div class="toolbar"><b>B</b><i>I</i><u>U</u><span></span><span></span></div><textarea>在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。</textarea><small class="count">108 / 500</small></article></section>
-  <section class="outcome-panel pane"><div class="pane-heading"><h2>可教学资产</h2><p>基于教材标准生成，可直接用于课堂</p></div><article class="asset-section explanation"><div class="section-title"><h3>三种讲法</h3><span>满足不同学生的认知需要</span></div><div class="mode-tabs">${[["visual","看图理解"],["analogy","生活比喻"],["counter","反例辨析"]].map(([id,label])=>`<button class="${state.explanationMode===id?"active":""}" data-mode="${id}">${label}</button>`).join("")}</div><div class="explanation-body"><div><h4>${exp.title}</h4><p>${exp.body}</p><aside>${exp.note}</aside></div>${functionGraph(state.explanationMode)}</div></article><article class="asset-section mistakes"><div class="section-title"><h3>真实错因</h3><span>基于社区真实问题提炼</span></div>${mistakes.map((m,i)=>`<div class="mistake-row"><b>${i+1}</b><div><strong>${m[0]}</strong><p>${m[1]}</p></div></div>`).join("")}</article><article class="asset-section diagnostics"><div class="section-title"><h3>诊断变式</h3><span>检测理解而非背诵</span></div><div class="diagnostic-row"><span>基础题</span><p>判断 y=-2x+1 与 y=3x-4 的增减性，并说明依据。</p></div><div class="diagnostic-row"><span>迁移题</span><p>某条直线经过 (0,2) 且向右下降，构造一个可能的解析式。</p></div></article><button class="confirm ${state.confirmed?"confirmed":""}" data-action="confirm">${icon("check")}<span>${state.confirmed?"已确认并加入课程资产":"我已确认以上内容，可加入课程资产"}</span><b>${state.confirmed?"已保存":"确认并保存"}</b></button></section>
-  <section class="evidence-bar"><div class="evidence-title"><b>来源与证据</b><span>每一步均可追溯</span></div>${[["教材标准","人教版 · 5.1.1 / 5.1.2","book"],["知乎社区","形象解释与真实困惑","link"],["AI 提炼","基于来源生成 · 可编辑","spark"],["教师确认",state.confirmed?"已确认 · 林老师":"等待确认","check"]].map(([a,b,c],i)=>`<div class="evidence-item ${i===3&&state.confirmed?"ready":""}">${icon(c)}<div><b>${a}</b><span>${b}</span></div></div>`).join("")}</section></section>`;
+  const filters = sources.some(s=>s.id.startsWith("live-")) ? [["all",`实时结果 ${sources.length}`]] : [["all",`全部 ${sources.length}`],["visual","形象解释"],["confusion","真实困惑"],["practice","教学经验"]];
+  return `<section class="forge-grid"><section class="source-panel pane"><div class="pane-heading"><h2>知乎认知源</h2><p>来自真实教师、学生与专业答主的讨论</p></div><div class="live-search"><label for="zhihu-query">真实 API 检索</label><div><input id="zhihu-query" value="${esc(state.liveQuery)}" data-live-query maxlength="80"><button data-action="live-search" ${state.liveStatus==="loading"?"disabled":""}>${state.liveStatus==="loading"?"同步中…":"同步知乎"}</button></div><p class="live-status ${state.liveStatus}"><i></i>${esc(state.liveMessage)}</p></div><div class="filter-row">${filters.map(([id,label])=>`<button class="filter ${state.sourceFilter===id?"active":""}" data-filter="${id}">${label}</button>`).join("")}</div><div class="source-list">${filtered.map(s=>`<button class="source-card ${state.selectedSource===s.id?"selected":""}" data-source="${esc(s.id)}"><span class="source-kind ${esc(s.tone)}">${esc(s.kind)}</span><strong>${esc(s.title)}</strong><p>${esc(s.excerpt)}</p><footer><span>${esc(s.meta)}</span><time>${esc(s.date)}</time></footer></button>`).join("")}</div><div class="source-trust"><b>${icon("search")}筛选原则</b><p>相关性 × 作者可信度 × 教材一致性 × 教师采纳</p></div></section>
+  <section class="alchemy-panel pane"><div class="pane-heading"><h2>知识炼金</h2><p>把社区智慧转化为可落地的教学内容</p></div><div class="pipeline">${["检索","对齐教材","提炼认知","教师确认"].map((label,i)=>`<button class="pipe-step ${state.pipeline===i?"active":state.pipeline>i?"done":""}" data-pipeline="${i}"><span>${state.pipeline>i?icon("check",14):i+1}</span><b>${label}</b><small>${["找到优质观点","匹配课程标准","形成教学内容","完善并入库"][i]}</small></button>`).join("")}</div><article class="processing-source"><div><span>当前处理的来源</span><h3>${esc(source.title)}</h3><p>${esc(source.author)} · ${esc(source.meta)}</p></div><a href="${safeUrl(source.url)}" target="_blank" rel="noreferrer">${icon("external")}查看原文</a></article><article class="alignment"><div class="section-title"><h3>对齐教材</h3><span>已匹配 2 条课程标准</span></div><div class="standard-head">人教版　八年级上册　第五章 一次函数</div><div class="standard-row"><b>5.1.1</b><span>理解一次函数概念，能根据解析式画出图像。</span></div><div class="standard-row"><b>5.1.2</b><span>理解 k 和 b 对图像与性质的影响。</span></div></article><article class="editor"><div class="section-title"><h3>提炼认知 <small>可编辑</small></h3><button data-action="ai-refine" ${state.aiStatus==="loading"?"disabled":""}>${icon("spark")}${state.aiStatus==="loading"?"炼金中…":"AI 提炼"}</button></div><p class="ai-status ${state.aiStatus}"><i></i>${esc(state.aiMessage)}</p><div class="toolbar"><b>B</b><i>I</i><u>U</u><span></span><span></span></div><textarea data-summary>${esc(state.alchemySummary)}</textarea><small class="count">${state.alchemySummary.length} / 500</small></article></section>
+  <section class="outcome-panel pane"><div class="pane-heading"><h2>可教学资产</h2><p>基于教材标准生成，可直接用于课堂</p></div><article class="asset-section explanation"><div class="section-title"><h3>三种讲法</h3><span>满足不同学生的认知需要</span></div><div class="mode-tabs">${[["visual","看图理解"],["analogy","生活比喻"],["counter","反例辨析"]].map(([id,label])=>`<button class="${state.explanationMode===id?"active":""}" data-mode="${id}">${label}</button>`).join("")}</div><div class="explanation-body"><div><h4>${esc(exp.title)}</h4><p>${esc(exp.body)}</p><aside>${esc(exp.note)}</aside></div>${functionGraph(state.explanationMode)}</div></article><article class="asset-section mistakes"><div class="section-title"><h3>真实错因</h3><span>基于社区真实问题提炼</span></div>${mistakes.map((m,i)=>`<div class="mistake-row"><b>${i+1}</b><div><strong>${esc(m.title)}</strong><p>${esc(m.detail)}</p></div></div>`).join("")}</article><article class="asset-section diagnostics"><div class="section-title"><h3>诊断变式</h3><span>检测理解而非背诵</span></div>${diagnostics.map(item=>`<div class="diagnostic-row"><span>${esc(item.label)}</span><p>${esc(item.prompt)}</p></div>`).join("")}</article><button class="confirm ${state.confirmed?"confirmed":""}" data-action="confirm">${icon("check")}<span>${state.confirmed?"已确认并加入课程资产":"我已确认以上内容，可加入课程资产"}</span><b>${state.confirmed?"已保存":"确认并保存"}</b></button></section>
+  <section class="evidence-bar"><div class="evidence-title"><b>来源与证据</b><span>每一步均可追溯</span></div>${[["教材标准","人教版 · 5.1.1 / 5.1.2","book"],["知乎社区",state.liveStatus==="success"?"实时 API 来源":"审核缓存来源","link"],["AI 提炼",state.aiStatus==="success"?"知乎直答生成 · 可编辑":"等待真实生成","spark"],["教师确认",state.confirmed?"已确认 · 林老师":"等待确认","check"]].map(([a,b,c],i)=>`<div class="evidence-item ${i===3&&state.confirmed?"ready":""}">${icon(c)}<div><b>${a}</b><span>${b}</span></div></div>`).join("")}</section></section>`;
 }
 
 function functionGraph(mode) { return `<svg class="function-graph" viewBox="0 0 180 130" role="img" aria-label="一次函数图像"><path class="axis" d="M20 105H165M48 118V12"/><path class="line up" d="M25 100L150 30"/><path class="line down" d="M25 27L150 103"/><text x="154" y="118">x</text><text x="37" y="16">y</text><text x="112" y="27">k &gt; 0</text><text x="112" y="100">k &lt; 0</text>${mode!=="visual"?'<circle cx="48" cy="41" r="4"/><circle cx="96" cy="70" r="4"/>':""}</svg>`; }
@@ -63,12 +73,13 @@ function renderStudent() {
 
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>{state.view=el.dataset.view;state.toast="";render();}));
-  document.querySelectorAll("[data-source]").forEach(el=>el.addEventListener("click",()=>{state.selectedSource=el.dataset.source;state.pipeline=2;render();}));
+  document.querySelectorAll("[data-source]").forEach(el=>el.addEventListener("click",()=>{state.selectedSource=el.dataset.source;state.pipeline=2;state.confirmed=false;state.aiStatus="idle";state.aiMessage="来源已选择，点击 AI 提炼生成教学资产";render();}));
   document.querySelectorAll("[data-filter]").forEach(el=>el.addEventListener("click",()=>{state.sourceFilter=el.dataset.filter;if(state.sourceFilter!=="all")state.selectedSource=state.sourceFilter;render();}));
   document.querySelectorAll("[data-pipeline]").forEach(el=>el.addEventListener("click",()=>{state.pipeline=Number(el.dataset.pipeline);render();}));
   document.querySelectorAll("[data-mode]").forEach(el=>el.addEventListener("click",()=>{state.explanationMode=el.dataset.mode;render();}));
   document.querySelectorAll("[data-student-mode]").forEach(el=>el.addEventListener("click",()=>{state.studentMode=el.dataset.studentMode;render();}));
   const input=document.querySelector("[data-student-answer]"); if(input)input.addEventListener("input",e=>state.studentAnswer=e.target.value);
+  const summary=document.querySelector("[data-summary]"); if(summary)summary.addEventListener("input",e=>state.alchemySummary=e.target.value);
   const liveInput=document.querySelector("[data-live-query]"); if(liveInput){liveInput.addEventListener("input",e=>state.liveQuery=e.target.value);liveInput.addEventListener("keydown",e=>{if(e.key==="Enter")handleAction("live-search");});}
   document.querySelectorAll("[data-action]").forEach(el=>el.addEventListener("click",()=>handleAction(el.dataset.action)));
 }
@@ -77,6 +88,15 @@ async function handleAction(action) {
   if(action==="generate"){state.view="path";render();}
   if(action==="again"){const m=["visual","analogy","counter"];state.studentMode=m[(m.indexOf(state.studentMode)+1)%m.length];state.studentResult="";render();}
   if(action==="answer"){const v=state.studentAnswer.trim().replace(/\s/g,"");state.studentResult=["-2","k=-2","k＝-2"].includes(v)?"答对了！k = -2，因为 y 的变化量是 -2。":"再想一步：k 表示 x 每增加 1 时，y 的变化量。";render();}
+  if(action==="ai-refine"){
+    const source=sources.find(item=>item.id===state.selectedSource)||sources[0]; if(!source)return;
+    state.aiStatus="loading";state.aiMessage="知乎直答正在把来源转化为教学资产…";state.pipeline=2;render();
+    try{
+      const response=await fetch("/api/zhihu/alchemy",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({topic:state.liveQuery,source:{title:source.title,excerpt:source.excerpt,author:source.author,url:source.url}})});
+      const payload=await response.json(); if(!response.ok)throw new Error(payload.message||"AI 提炼暂时不可用");
+      explanations=payload.assets.explanations;mistakes=payload.assets.mistakes;diagnostics=payload.assets.diagnostics;state.alchemySummary=payload.assets.summary;state.aiStatus="success";state.aiMessage="已由知乎直答生成，并通过教学资产结构校验";state.pipeline=3;state.confirmed=false;render();
+    }catch(error){state.aiStatus="error";state.aiMessage=`${error.message}；保留已审核资产继续演示`;state.pipeline=2;render();}
+  }
   if(action==="live-search"){
     const query=state.liveQuery.trim(); if(query.length<2){state.liveStatus="error";state.liveMessage="请输入至少 2 个字的检索主题";render();return;}
     state.liveStatus="loading";state.liveMessage="正在安全调用知乎开放平台…";render();
@@ -85,7 +105,7 @@ async function handleAction(action) {
       const payload=await response.json(); if(!response.ok)throw new Error(payload.message||"知乎 API 暂时不可用");
       if(!payload.items?.length)throw new Error("没有检索到匹配内容，请换个关键词");
       sources=payload.items.map((item,index)=>({id:`live-${index}`,kind:index===0?"高相关回答":index===1?"社区观点":"教学素材",tone:["blue","violet","green"][index%3],title:item.title,excerpt:item.excerpt||"打开原文查看完整内容",author:item.author||"知乎用户",meta:`知乎${item.contentType||"内容"} · ${item.votes||0} 赞同 · 权威 ${item.authority||1}`,date:item.date||"刚刚同步",url:item.url}));
-      state.selectedSource=sources[0].id;state.sourceFilter="all";state.pipeline=1;state.liveStatus="success";state.liveMessage=`已通过真实 API 同步 ${sources.length} 条 · ${new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;render();
+      state.selectedSource=sources[0].id;state.sourceFilter="all";state.pipeline=1;state.liveStatus="success";state.liveMessage=`已通过真实 API 同步 ${sources.length} 条 · ${new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;state.aiStatus="idle";state.aiMessage="已选择实时来源，点击 AI 提炼生成教学资产";render();
     }catch(error){sources=[...cachedSources];state.selectedSource="visual";state.sourceFilter="all";state.liveStatus="error";state.liveMessage=`${error.message}；已切回缓存演示数据`;render();}
   }
 }

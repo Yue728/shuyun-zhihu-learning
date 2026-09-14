@@ -29,6 +29,19 @@ test("health endpoint does not expose secrets", async () => {
   assert.deepEqual(await response.json(), { ok: true, zhihuConfigured: false });
 });
 
+test("alchemy endpoint requires a server-side secret", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("alchemy-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/api/zhihu/alchemy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: "一次函数", source: { title: "测试", excerpt: "用于测试的有效来源摘要内容", url: "https://www.zhihu.com/question/1" } }) }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { message: "服务端尚未配置知乎 Access Secret" });
+});
+
 test("ships API-aware client and social metadata", async () => {
   const [css, layout, packageJson, appJs] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -40,4 +53,5 @@ test("ships API-aware client and social metadata", async () => {
   assert.match(layout, /shuyun-hackathon-cover-v4/);
   assert.match(packageJson, /shuyun-zhihu-teaching-assistant/);
   assert.match(appJs, /\/api\/zhihu\/search/);
+  assert.match(appJs, /\/api\/zhihu\/alchemy/);
 });
