@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./story.css";
 
 export const metadata: Metadata = {
@@ -25,13 +24,13 @@ export default function StoryPage() {
   return (
     <main className="story-book" id="story-top">
       <header className="story-nav">
-        <Link className="story-brand" href="/" aria-label="返回数蕴知识炼金台">
+        <a className="story-brand" href="/" aria-label="返回数蕴知识炼金台">
           <img src="/assets/shuyun-icon.svg" alt="数蕴标志" />
           <span><b>数蕴</b><small>MATHESIS</small></span>
-        </Link>
+        </a>
         <nav aria-label="品牌故事导航">
           <a href="#belief">为什么</a><a href="#passage">如何发生</a>
-          <Link className="enter-product" href="/">进入知识炼金台 <span>→</span></Link>
+          <a className="enter-product" href="/">进入知识炼金台 <span>→</span></a>
         </nav>
       </header>
 
@@ -39,7 +38,7 @@ export default function StoryPage() {
         <div className="cover-copy">
           <div className="story-index"><span>数蕴品牌故事 · 2026</span><span>FROM BECAUSE TO THEREFORE</span></div>
           <div><h1>数蕴</h1><p className="cover-en">MATHESIS</p><p className="cover-line">让每一个“为什么”，<br />抵达“所以”。</p></div>
-          <div className="cover-actions"><Link href="/">进入教师端 <span>→</span></Link><a href="#belief">读完这个故事</a></div>
+          <div className="cover-actions"><a href="/">进入教师端 <span>→</span></a><a href="#belief">读完这个故事</a></div>
         </div>
         <div className="cover-symbol" aria-label="从因为到所以">
           <span className="because">∵</span><img src="/assets/shuyun-icon.svg" alt="数蕴因果标志" /><span className="therefore">∴</span>
@@ -78,7 +77,7 @@ export default function StoryPage() {
 
       <section className="story-finale">
         <img src="/assets/shuyun-icon.svg" alt="数蕴标志" /><h2>让每一个“为什么”，<br />抵达“所以”。</h2><p>为教师保留判断。为学生保留思考。</p>
-        <div><Link href="/">进入知识炼金台 <span>→</span></Link><Link href="/?view=student">体验学生端</Link></div>
+        <div><a href="/">进入知识炼金台 <span>→</span></a><a href="/?view=student">体验学生端</a></div>
         <footer><span>数蕴 · MATHESIS</span><span>知乎知识炼金助教</span></footer>
       </section>
     </main>
