@@ -6,7 +6,7 @@
 
 如果学生答对了一道题，却说不清为什么，他真的理解了吗？
 
-[在线体验](https://shuyun-zhihu-learning.cynb0728.chatgpt.site/) · [阅读品牌故事](https://shuyun-zhihu-learning.cynb0728.chatgpt.site/story)
+[在线体验](https://shuyun-zhihu-learning.shuyun-mathesis.workers.dev/) · [阅读品牌故事](https://shuyun-zhihu-learning.shuyun-mathesis.workers.dev/story)
 
 ![数蕴项目封面](public/assets/shuyun-hackathon-cover-v4.png)
 
