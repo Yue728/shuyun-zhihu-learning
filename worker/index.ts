@@ -4,6 +4,7 @@ import handler from "vinext/server/app-router-entry";
 
 interface Env {
   ASSETS: Fetcher;
+  DB?: D1Database;
   ZHIHU_ACCESS_SECRET?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -19,6 +20,17 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  run(): Promise<unknown>;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<{ results?: T[] }>;
+}
+
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -30,7 +42,32 @@ const worker = {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, zhihuConfigured: Boolean(env.ZHIHU_ACCESS_SECRET) });
+      return json({ ok: true, zhihuConfigured: Boolean(env.ZHIHU_ACCESS_SECRET), analyticsConfigured: Boolean(env.DB) });
+    }
+
+    if (url.pathname === "/api/zhihu/quota") {
+      if (request.method !== "GET") return json({ message: "仅支持 GET 请求" }, 405);
+      if (!env.ZHIHU_ACCESS_SECRET) return json({ message: "服务端尚未配置知乎 Access Secret" }, 503);
+      const upstream = new URL("https://developer.zhihu.com/api/v1/quota");
+      upstream.searchParams.set("APIIDs", "zhihu_search,zhida_openai");
+      try {
+        const response = await fetch(upstream, {
+          headers: zhihuHeaders(env.ZHIHU_ACCESS_SECRET),
+          signal: AbortSignal.timeout(12_000),
+        });
+        const payload = await response.json() as { Code?: number; Message?: string; Data?: Array<Record<string, unknown>> };
+        if (!response.ok || payload.Code !== 0) return json({ message: payload.Message ?? "知乎额度查询失败" }, response.ok ? 502 : response.status);
+        const quota = (payload.Data ?? []).map((item) => ({
+          apiId: cleanText(item.APIID, 40),
+          name: cleanText(item.APIName, 40),
+          total: Number(item.TotalQuota) || 0,
+          used: Number(item.TotalUsed) || 0,
+          remaining: Number(item.RemainingQuota) || 0,
+        }));
+        return json({ quota, checkedAt: new Date().toISOString() });
+      } catch {
+        return json({ message: "知乎额度查询超时" }, 504);
+      }
     }
 
     if (url.pathname === "/api/zhihu/search") {
@@ -39,21 +76,19 @@ const worker = {
       if (query.length < 2 || query.length > 80) return json({ message: "检索主题须为 2–80 个字符" }, 400);
       if (!env.ZHIHU_ACCESS_SECRET) return json({ message: "服务端尚未配置知乎 Access Secret" }, 503);
 
+      const startedAt = Date.now();
       const upstream = new URL("https://developer.zhihu.com/api/v1/content/zhihu_search");
       upstream.searchParams.set("Query", query);
       upstream.searchParams.set("Count", "3");
 
       try {
         const response = await fetch(upstream, {
-          headers: {
-            Authorization: `Bearer ${env.ZHIHU_ACCESS_SECRET}`,
-            "X-Request-Timestamp": String(Math.floor(Date.now() / 1000)),
-            "Content-Type": "application/json",
-          },
+          headers: zhihuHeaders(env.ZHIHU_ACCESS_SECRET),
           signal: AbortSignal.timeout(12_000),
         });
         const payload = await response.json() as { Code?: number; Message?: string; Data?: { Items?: Array<Record<string, unknown>> } };
         if (!response.ok || payload.Code !== 0) {
+          ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "search", topic: query, success: false, latencyMs: Date.now() - startedAt }));
           const messages: Record<number, string> = { 10001: "检索参数无效", 20001: "知乎 API 鉴权失败", 30001: "知乎 API 今日额度或频率已达上限", 90001: "知乎 API 暂时不可用" };
           return json({ message: messages[payload.Code ?? 0] ?? payload.Message ?? "知乎 API 请求失败" }, response.ok ? 502 : response.status);
         }
@@ -68,8 +103,10 @@ const worker = {
           date: Number(item.EditTime) ? new Date(Number(item.EditTime) * 1000).toISOString().slice(0, 10) : "",
           url: safeZhihuUrl(item.Url),
         }));
+        ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "search", topic: query, success: true, latencyMs: Date.now() - startedAt }));
         return json({ items, source: "zhihu-open-api", query }, 200, { "Cache-Control": "public, max-age=60" });
       } catch {
+        ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "search", topic: query, success: false, latencyMs: Date.now() - startedAt }));
         return json({ message: "连接知乎 API 超时，请稍后重试" }, 504);
       }
     }
@@ -93,14 +130,11 @@ const worker = {
       if (topic.length < 2 || !title || excerpt.length < 10) return json({ message: "请先选择一条有效的知乎来源" }, 400);
 
       const prompt = buildAlchemyPrompt({ topic, title, excerpt, author, url: sourceUrl });
+      const startedAt = Date.now();
       try {
         const response = await fetch("https://developer.zhihu.com/v1/chat/completions", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.ZHIHU_ACCESS_SECRET}`,
-            "X-Request-Timestamp": String(Math.floor(Date.now() / 1000)),
-            "Content-Type": "application/json",
-          },
+          headers: zhihuHeaders(env.ZHIHU_ACCESS_SECRET),
           body: JSON.stringify({
             model: "zhida-fast-1p5",
             messages: [{ role: "user", content: prompt }],
@@ -110,16 +144,73 @@ const worker = {
         });
         const payload = await response.json() as ChatCompletion;
         if (!response.ok || payload.error) {
+          ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "alchemy", topic, success: false, latencyMs: Date.now() - startedAt }));
           const code = payload.error?.code;
           const message = code === "rate_limit_exceeded" ? "知乎直答额度或频率已达上限" : code === "invalid_api_key" ? "知乎直答鉴权失败" : "知乎直答暂时不可用";
           return json({ message }, response.ok ? 502 : response.status);
         }
         const content = payload.choices?.[0]?.message?.content ?? "";
         const assets = parseAlchemyAssets(content);
-        if (!assets) return json({ message: "AI 返回内容未通过教学资产结构校验" }, 502);
+        if (!assets) {
+          ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "alchemy", topic, success: false, latencyMs: Date.now() - startedAt }));
+          return json({ message: "AI 返回内容未通过教学资产结构校验" }, 502);
+        }
+        ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "alchemy", topic, success: true, latencyMs: Date.now() - startedAt }));
         return json({ assets, source: { title, author, url: sourceUrl }, model: payload.model ?? "zhida-fast-1p5" });
       } catch {
+        ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "alchemy", topic, success: false, latencyMs: Date.now() - startedAt }));
         return json({ message: "知乎直答响应超时，请使用已审核资产继续演示" }, 504);
+      }
+    }
+
+    if (url.pathname === "/api/analytics/event") {
+      if (request.method !== "POST") return json({ message: "仅支持 POST 请求" }, 405);
+      if (!env.DB) return json({ message: "学习记录数据库尚未启用" }, 503);
+      try {
+        const payload = await request.json() as Record<string, unknown>;
+        const eventType = cleanText(payload.eventType, 40);
+        const allowed = new Set(["teacher_confirm", "explanation_view", "answer", "review_view"]);
+        if (!allowed.has(eventType)) return json({ message: "不支持的学习事件" }, 400);
+        const actor = payload.actor === "teacher" ? "teacher" : "student";
+        const mode = ["visual", "analogy", "counter"].includes(String(payload.mode)) ? String(payload.mode) : "";
+        const correct = typeof payload.correct === "boolean" ? payload.correct : null;
+        await logEvent(env, request, { actor, eventType, topic: cleanText(payload.topic, 80), mode, correct, success: true });
+        return json({ ok: true }, 201);
+      } catch {
+        return json({ message: "学习事件记录失败" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/analytics/summary") {
+      if (request.method !== "GET") return json({ message: "仅支持 GET 请求" }, 405);
+      if (!env.DB) return json({ message: "学习记录数据库尚未启用" }, 503);
+      try {
+        const summary = await env.DB.prepare(`SELECT
+          COUNT(*) AS totalEvents,
+          COUNT(DISTINCT session_id) AS sessions,
+          SUM(CASE WHEN event_type = 'search' THEN 1 ELSE 0 END) AS searches,
+          SUM(CASE WHEN event_type = 'search' AND success = 1 THEN 1 ELSE 0 END) AS successfulSearches,
+          SUM(CASE WHEN event_type = 'alchemy' THEN 1 ELSE 0 END) AS generations,
+          SUM(CASE WHEN event_type = 'alchemy' AND success = 1 THEN 1 ELSE 0 END) AS successfulGenerations,
+          SUM(CASE WHEN event_type = 'teacher_confirm' THEN 1 ELSE 0 END) AS confirmations,
+          SUM(CASE WHEN event_type = 'answer' THEN 1 ELSE 0 END) AS answers,
+          SUM(CASE WHEN event_type = 'answer' AND correct = 1 THEN 1 ELSE 0 END) AS correctAnswers,
+          ROUND(AVG(CASE WHEN event_type = 'search' AND success = 1 THEN latency_ms END)) AS avgSearchMs,
+          ROUND(AVG(CASE WHEN event_type = 'alchemy' AND success = 1 THEN latency_ms END)) AS avgGenerationMs,
+          SUM(CASE WHEN source_kind = 'simulation' THEN 1 ELSE 0 END) AS simulationEvents,
+          MAX(created_at) AS lastEventAt
+        FROM test_events`).first<Record<string, unknown>>();
+        const modesResult = await env.DB.prepare(`SELECT mode, COUNT(*) AS views,
+          SUM(CASE WHEN event_type = 'answer' THEN 1 ELSE 0 END) AS answers,
+          SUM(CASE WHEN event_type = 'answer' AND correct = 1 THEN 1 ELSE 0 END) AS correctAnswers
+          FROM test_events WHERE mode != '' GROUP BY mode ORDER BY views DESC`).all<Record<string, unknown>>();
+        return json({
+          summary: normalizeSummary(summary ?? {}),
+          modes: (modesResult.results ?? []).map((row) => ({ mode: cleanText(row.mode, 20), views: toNumber(row.views), answers: toNumber(row.answers), correctAnswers: toNumber(row.correctAnswers) })),
+          disclosure: "包含模拟师生行为与交互演示记录，不代表真实课堂学习效果。",
+        });
+      } catch {
+        return json({ message: "学习趋势读取失败" }, 500);
       }
     }
 
@@ -151,6 +242,75 @@ function safeZhihuUrl(value: unknown): string {
 
 function json(payload: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return Response.json(payload, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
+}
+
+function zhihuHeaders(secret: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${secret}`,
+    "X-Request-Timestamp": String(Math.floor(Date.now() / 1000)),
+    "Content-Type": "application/json",
+  };
+}
+
+function requestLabel(request: Request, name: string, fallback: string, max = 80): string {
+  return cleanText(request.headers.get(name), max) || fallback;
+}
+
+async function logEvent(env: Env, request: Request, event: {
+  actor: "teacher" | "student";
+  eventType: string;
+  topic?: string;
+  mode?: string;
+  correct?: boolean | null;
+  success?: boolean;
+  latencyMs?: number;
+}): Promise<void> {
+  if (!env.DB) return;
+  try {
+    await env.DB.prepare(`INSERT INTO test_events
+      (session_id, run_id, source_kind, actor, event_type, topic, mode, correct, success, latency_ms)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(
+        requestLabel(request, "X-Shuyun-Session", crypto.randomUUID(), 100),
+        requestLabel(request, "X-Shuyun-Run", "interactive", 100),
+        requestLabel(request, "X-Shuyun-Source", "interactive", 20) === "simulation" ? "simulation" : "interactive",
+        event.actor,
+        cleanText(event.eventType, 40),
+        cleanText(event.topic, 80),
+        cleanText(event.mode, 20),
+        typeof event.correct === "boolean" ? Number(event.correct) : null,
+        event.success === false ? 0 : 1,
+        Number.isFinite(event.latencyMs) ? Math.max(0, Math.round(event.latencyMs ?? 0)) : null,
+      ).run();
+  } catch {
+    // Analytics must never block the teaching flow.
+  }
+}
+
+function toNumber(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function normalizeSummary(row: Record<string, unknown>) {
+  const answers = toNumber(row.answers);
+  const correctAnswers = toNumber(row.correctAnswers);
+  return {
+    totalEvents: toNumber(row.totalEvents),
+    sessions: toNumber(row.sessions),
+    searches: toNumber(row.searches),
+    successfulSearches: toNumber(row.successfulSearches),
+    generations: toNumber(row.generations),
+    successfulGenerations: toNumber(row.successfulGenerations),
+    confirmations: toNumber(row.confirmations),
+    answers,
+    correctAnswers,
+    answerAccuracy: answers ? Math.round((correctAnswers / answers) * 100) : 0,
+    avgSearchMs: toNumber(row.avgSearchMs),
+    avgGenerationMs: toNumber(row.avgGenerationMs),
+    simulationEvents: toNumber(row.simulationEvents),
+    lastEventAt: cleanText(row.lastEventAt, 40),
+  };
 }
 
 interface AlchemyInput {

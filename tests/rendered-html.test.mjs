@@ -26,7 +26,7 @@ test("server-renders the Shuyun application shell", async () => {
 test("health endpoint does not expose secrets", async () => {
   const response = await render("/api/health");
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, zhihuConfigured: false });
+  assert.deepEqual(await response.json(), { ok: true, zhihuConfigured: false, analyticsConfigured: false });
 });
 
 test("alchemy endpoint requires a server-side secret", async () => {
@@ -54,4 +54,7 @@ test("ships API-aware client and social metadata", async () => {
   assert.match(packageJson, /shuyun-zhihu-teaching-assistant/);
   assert.match(appJs, /\/api\/zhihu\/search/);
   assert.match(appJs, /\/api\/zhihu\/alchemy/);
+  assert.match(appJs, /\/api\/analytics\/summary/);
+  assert.doesNotMatch(appJs, /\+18%/);
+  assert.doesNotMatch(appJs, /隔周迁移<\/span><b>72%/);
 });

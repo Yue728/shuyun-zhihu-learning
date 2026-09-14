@@ -21,7 +21,8 @@ let diagnostics = [
   { label: "迁移题", prompt: "某条直线经过 (0,2) 且向右下降，构造一个可能的解析式。" },
 ];
 
-const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "一次函数 k 正负 增减性", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。" };
+const sessionId = crypto.randomUUID();
+const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "一次函数 k 正负 增减性", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。", analyticsStatus: "idle", analyticsMessage: "进入页面后读取真实记录", analytics: null, analyticsModes: [] };
 const navItems = [["forge","知识炼金台","flask"],["assets","课程资产","book"],["path","学习路径","nodes"],["diagnosis","诊断与变式","file"],["review","学情复盘","chart"]];
 
 function icon(name, size = 18) {
@@ -63,8 +64,8 @@ function renderForge() {
 function functionGraph(mode) { return `<svg class="function-graph" viewBox="0 0 180 130" role="img" aria-label="一次函数图像"><path class="axis" d="M20 105H165M48 118V12"/><path class="line up" d="M25 100L150 30"/><path class="line down" d="M25 27L150 103"/><text x="154" y="118">x</text><text x="37" y="16">y</text><text x="112" y="27">k &gt; 0</text><text x="112" y="100">k &lt; 0</text>${mode!=="visual"?'<circle cx="48" cy="41" r="4"/><circle cx="96" cy="70" r="4"/>':""}</svg>`; }
 function renderAssets() { const rows=[["k 与增减性的三种讲法","知乎 + 教材","课堂解释 / 学生订正","教师已确认"],["截距不是距离","知乎专业答主","易错点诊断","待确认"],["一次函数生活情境库","知乎社区讨论","L3 迁移题","已对齐教材"],["本班一次函数错因画像","学生作答","学情复盘","持续更新"]]; return `<section class="page"><div class="page-intro"><h2>一门课，越教越懂这位老师</h2><p>所有认知素材都保留出处、教材对齐记录和教师确认状态。</p></div><div class="asset-table"><div class="table-head"><span>课程资产</span><span>来源</span><span>教学用途</span><span>状态</span></div>${rows.map(r=>`<button class="table-row">${r.map((v,i)=>`<span class="${i===3?"status":""}">${v}</span>`).join("")}</button>`).join("")}</div></section>`; }
 function renderPath() { const steps=[["01","建立直觉","用图像和生活比喻理解 k 是变化率","8 分钟"],["02","识别边界","用反例区分 k 与 b 对图像的不同影响","6 分钟"],["03","主动诊断","先解释理由，再判断函数的增减性","4 道题"],["04","迁移验证","从真实情境建立一次函数关系","2 个情境"]]; return `<section class="page"><div class="page-intro"><h2>从“看懂”到“会迁移”</h2><p>学习路径保留必要的思考摩擦，不让 AI 替学生完成学习。</p></div><div class="learning-path">${steps.map((s,i)=>`<article><span>${s[0]}</span><div><small>${i<2?"认知输入":"主动输出"}</small><h3>${s[1]}</h3><p>${s[2]}</p></div><b>${s[3]}</b></article>`).join("")}</div><button class="primary large" data-view="student">${icon("phone")}进入学生端体验“再讲一种”</button></section>`; }
-function renderDiagnosis() { return `<section class="page"><div class="page-intro"><h2>错因不同，训练就不该相同</h2><p>系统先判断认知卡点，再选择解释与变式，不把所有错误都归为“粗心”。</p></div><div class="diagnosis-board"><div class="diag-list">${[["概念表征错误",38,"回到三种讲法"],["条件扫描遗漏",26,"圈画关键词"],["符号与步骤习惯",21,"完整书写训练"],["迁移边界不清",15,"反例 + L2 变式"]].map(d=>`<div><span>${d[0]}</span><i style="--value:${d[1]}%"></i><b>${d[1]}%</b><em>${d[2]}</em></div>`).join("")}</div><aside><h3>本轮诊断建议</h3><p>班级主要问题不是计算，而是把 <i>k</i> 与 <i>b</i> 的作用混淆。建议先用反例辨析，再做两道跨表征变式。</p><button data-view="student">查看学生订正体验 ${icon("arrow")}</button></aside></div></section>`; }
-function renderReview() { return `<section class="page"><div class="page-intro"><h2>用学习结果检验“哪种讲法有效”</h2><p>知乎内容是否优质，不只看点赞，还看它是否真的促进理解与迁移。</p></div><div class="review-grid"><article class="review-focus"><small>阶段结论</small><h3>“变化率”讲法对中等生最有效</h3><p>使用生活比喻后，相关学生在跨表征题中的正确率提高；“只记正负口诀”的学生仍容易在反向表述中出错。</p><button>查看证据链 ${icon("arrow")}</button></article><div class="review-metrics"><div><span>教师采纳</span><b>3 / 4</b><small>种认知素材</small></div><div><span>首次理解</span><b>+18%</b><small>诊断题表现</small></div><div><span>隔周迁移</span><b>72%</b><small>仍需继续观察</small></div><div><span>低置信结果</span><b>2</b><small>等待教师复核</small></div></div></div></section>`; }
+function renderDiagnosis() { const a=state.analytics; const rows=state.analyticsModes.length?state.analyticsModes.map(m=>[modeName(m.mode),m.views,`${m.correctAnswers}/${m.answers} 次答对`]):[["看图理解",0,"等待测试"],["生活比喻",0,"等待测试"],["反例辨析",0,"等待测试"]]; const max=Math.max(1,...rows.map(r=>r[1])); return `<section class="page"><div class="page-intro"><h2>错因不同，训练就不该相同</h2><p>当前展示模拟测试中的解释选择与答题行为；错因分类仍需真实课堂样本验证。</p></div><div class="simulation-note">模拟师生测试数据 · 共 ${a?.answers||0} 次作答 · 不代表真实学生学习效果</div><div class="diagnosis-board"><div class="diag-list">${rows.map(d=>`<div><span>${d[0]}</span><i style="--value:${Math.round(d[1]/max*100)}%"></i><b>${d[1]}</b><em>${d[2]}</em></div>`).join("")}</div><aside><h3>当前可确认</h3><p>系统已能记录学生选择的讲法、答题结果与教师确认行为。真实课堂数据积累后，才能进一步判断哪类错因对应哪种解释最有效。</p><button data-view="student">继续模拟学生作答 ${icon("arrow")}</button></aside></div></section>`; }
+function renderReview() { const a=state.analytics; if(state.analyticsStatus!=="success"||!a)return `<section class="page"><div class="page-intro"><h2>学情复盘</h2><p>读取持久化的模拟师生行为与 API 运行记录。</p></div><div class="analytics-empty"><b>${state.analyticsStatus==="loading"?"正在读取真实记录…":"暂时无法读取记录"}</b><p>${esc(state.analyticsMessage)}</p><button data-action="refresh-analytics">重新读取</button></div></section>`; const searchRate=a.searches?Math.round(a.successfulSearches/a.searches*100):0; const generationRate=a.generations?Math.round(a.successfulGenerations/a.generations*100):0; return `<section class="page"><div class="page-intro"><h2>真实运行记录，而不是演示数字</h2><p>知乎内容是否适合教学，先用可审计的使用行为验证，再进入真实课堂研究。</p></div><div class="simulation-note">${esc(state.analyticsDisclosure||"包含模拟师生行为，不代表真实课堂学习效果。")}</div><div class="review-grid"><article class="review-focus"><small>当前测试基线</small><h3>已留下 ${a.totalEvents} 条可审计行为记录</h3><p>覆盖 ${a.sessions} 个匿名会话、${a.searches} 次知乎搜索、${a.generations} 次 AI 提炼和 ${a.answers} 次学生作答。所有数据来自当前产品的持久化事件记录。</p><button data-action="refresh-analytics">刷新数据 ${icon("rotate")}</button></article><div class="review-metrics"><div><span>搜索成功率</span><b>${searchRate}%</b><small>${a.successfulSearches} / ${a.searches} 次</small></div><div><span>生成成功率</span><b>${generationRate}%</b><small>${a.successfulGenerations} / ${a.generations} 次</small></div><div><span>模拟答题正确率</span><b>${a.answerAccuracy}%</b><small>${a.correctAnswers} / ${a.answers} 次</small></div><div><span>教师确认</span><b>${a.confirmations}</b><small>次教学资产采纳</small></div></div></div><div class="analytics-foot"><span>平均搜索 ${formatMs(a.avgSearchMs)}</span><span>平均生成 ${formatMs(a.avgGenerationMs)}</span><span>模拟事件 ${a.simulationEvents}</span><span>最近记录 ${formatDate(a.lastEventAt)}</span></div></section>`; }
 
 function renderStudent() {
   const exp=explanations[state.studentMode];
@@ -72,27 +73,28 @@ function renderStudent() {
 }
 
 function bindEvents() {
-  document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>{state.view=el.dataset.view;state.toast="";render();}));
+  document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>{state.view=el.dataset.view;state.toast="";render();if(["review","diagnosis"].includes(state.view))loadAnalytics();}));
   document.querySelectorAll("[data-source]").forEach(el=>el.addEventListener("click",()=>{state.selectedSource=el.dataset.source;state.pipeline=2;state.confirmed=false;state.aiStatus="idle";state.aiMessage="来源已选择，点击 AI 提炼生成教学资产";render();}));
   document.querySelectorAll("[data-filter]").forEach(el=>el.addEventListener("click",()=>{state.sourceFilter=el.dataset.filter;if(state.sourceFilter!=="all")state.selectedSource=state.sourceFilter;render();}));
   document.querySelectorAll("[data-pipeline]").forEach(el=>el.addEventListener("click",()=>{state.pipeline=Number(el.dataset.pipeline);render();}));
-  document.querySelectorAll("[data-mode]").forEach(el=>el.addEventListener("click",()=>{state.explanationMode=el.dataset.mode;render();}));
-  document.querySelectorAll("[data-student-mode]").forEach(el=>el.addEventListener("click",()=>{state.studentMode=el.dataset.studentMode;render();}));
+  document.querySelectorAll("[data-mode]").forEach(el=>el.addEventListener("click",()=>{state.explanationMode=el.dataset.mode;postEvent({actor:"teacher",eventType:"explanation_view",mode:state.explanationMode,topic:state.liveQuery});render();}));
+  document.querySelectorAll("[data-student-mode]").forEach(el=>el.addEventListener("click",()=>{state.studentMode=el.dataset.studentMode;postEvent({actor:"student",eventType:"explanation_view",mode:state.studentMode,topic:state.liveQuery});render();}));
   const input=document.querySelector("[data-student-answer]"); if(input)input.addEventListener("input",e=>state.studentAnswer=e.target.value);
   const summary=document.querySelector("[data-summary]"); if(summary)summary.addEventListener("input",e=>state.alchemySummary=e.target.value);
   const liveInput=document.querySelector("[data-live-query]"); if(liveInput){liveInput.addEventListener("input",e=>state.liveQuery=e.target.value);liveInput.addEventListener("keydown",e=>{if(e.key==="Enter")handleAction("live-search");});}
   document.querySelectorAll("[data-action]").forEach(el=>el.addEventListener("click",()=>handleAction(el.dataset.action)));
 }
 async function handleAction(action) {
-  if(action==="confirm"){state.confirmed=true;state.toast="已保存：三种讲法、真实错因和诊断变式";render();setTimeout(()=>{state.toast="";render();},2600);}
+  if(action==="confirm"){state.confirmed=true;state.toast="已保存：三种讲法、真实错因和诊断变式";postEvent({actor:"teacher",eventType:"teacher_confirm",mode:state.explanationMode,topic:state.liveQuery});render();setTimeout(()=>{state.toast="";render();},2600);}
   if(action==="generate"){state.view="path";render();}
-  if(action==="again"){const m=["visual","analogy","counter"];state.studentMode=m[(m.indexOf(state.studentMode)+1)%m.length];state.studentResult="";render();}
-  if(action==="answer"){const v=state.studentAnswer.trim().replace(/\s/g,"");state.studentResult=["-2","k=-2","k＝-2"].includes(v)?"答对了！k = -2，因为 y 的变化量是 -2。":"再想一步：k 表示 x 每增加 1 时，y 的变化量。";render();}
+  if(action==="again"){const m=["visual","analogy","counter"];state.studentMode=m[(m.indexOf(state.studentMode)+1)%m.length];state.studentResult="";postEvent({actor:"student",eventType:"explanation_view",mode:state.studentMode,topic:state.liveQuery});render();}
+  if(action==="answer"){const v=state.studentAnswer.trim().replace(/\s/g,"");const correct=["-2","k=-2","k＝-2"].includes(v);state.studentResult=correct?"答对了！k = -2，因为 y 的变化量是 -2。":"再想一步：k 表示 x 每增加 1 时，y 的变化量。";postEvent({actor:"student",eventType:"answer",mode:state.studentMode,correct,topic:state.liveQuery});render();}
+  if(action==="refresh-analytics"){loadAnalytics();}
   if(action==="ai-refine"){
     const source=sources.find(item=>item.id===state.selectedSource)||sources[0]; if(!source)return;
     state.aiStatus="loading";state.aiMessage="知乎直答正在把来源转化为教学资产…";state.pipeline=2;render();
     try{
-      const response=await fetch("/api/zhihu/alchemy",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({topic:state.liveQuery,source:{title:source.title,excerpt:source.excerpt,author:source.author,url:source.url}})});
+      const response=await fetch("/api/zhihu/alchemy",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json","X-Shuyun-Session":sessionId},body:JSON.stringify({topic:state.liveQuery,source:{title:source.title,excerpt:source.excerpt,author:source.author,url:source.url}})});
       const payload=await response.json(); if(!response.ok)throw new Error(payload.message||"AI 提炼暂时不可用");
       explanations=payload.assets.explanations;mistakes=payload.assets.mistakes;diagnostics=payload.assets.diagnostics;state.alchemySummary=payload.assets.summary;state.aiStatus="success";state.aiMessage="已由知乎直答生成，并通过教学资产结构校验";state.pipeline=3;state.confirmed=false;render();
     }catch(error){state.aiStatus="error";state.aiMessage=`${error.message}；保留已审核资产继续演示`;state.pipeline=2;render();}
@@ -101,7 +103,7 @@ async function handleAction(action) {
     const query=state.liveQuery.trim(); if(query.length<2){state.liveStatus="error";state.liveMessage="请输入至少 2 个字的检索主题";render();return;}
     state.liveStatus="loading";state.liveMessage="正在安全调用知乎开放平台…";render();
     try{
-      const response=await fetch(`/api/zhihu/search?q=${encodeURIComponent(query)}`,{headers:{Accept:"application/json"}});
+      const response=await fetch(`/api/zhihu/search?q=${encodeURIComponent(query)}`,{headers:{Accept:"application/json","X-Shuyun-Session":sessionId}});
       const payload=await response.json(); if(!response.ok)throw new Error(payload.message||"知乎 API 暂时不可用");
       if(!payload.items?.length)throw new Error("没有检索到匹配内容，请换个关键词");
       sources=payload.items.map((item,index)=>({id:`live-${index}`,kind:index===0?"高相关回答":index===1?"社区观点":"教学素材",tone:["blue","violet","green"][index%3],title:item.title,excerpt:item.excerpt||"打开原文查看完整内容",author:item.author||"知乎用户",meta:`知乎${item.contentType||"内容"} · ${item.votes||0} 赞同 · 权威 ${item.authority||1}`,date:item.date||"刚刚同步",url:item.url}));
@@ -109,4 +111,10 @@ async function handleAction(action) {
     }catch(error){sources=[...cachedSources];state.selectedSource="visual";state.sourceFilter="all";state.liveStatus="error";state.liveMessage=`${error.message}；已切回缓存演示数据`;render();}
   }
 }
+
+async function postEvent(payload){try{await fetch("/api/analytics/event",{method:"POST",headers:{"Content-Type":"application/json","X-Shuyun-Session":sessionId},body:JSON.stringify(payload)});}catch{} }
+async function loadAnalytics(){state.analyticsStatus="loading";state.analyticsMessage="正在读取真实记录";render();try{const response=await fetch("/api/analytics/summary",{headers:{Accept:"application/json","X-Shuyun-Session":sessionId}});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"读取失败");state.analytics=payload.summary;state.analyticsModes=payload.modes||[];state.analyticsDisclosure=payload.disclosure;state.analyticsStatus="success";state.analyticsMessage="已读取最新记录";postEvent({actor:"teacher",eventType:"review_view",topic:state.liveQuery});render();}catch(error){state.analyticsStatus="error";state.analyticsMessage=error.message;render();}}
+function modeName(mode){return ({visual:"看图理解",analogy:"生活比喻",counter:"反例辨析"})[mode]||mode;}
+function formatMs(value){return value?value>=1000?`${(value/1000).toFixed(1)} 秒`:`${value} 毫秒`:"暂无";}
+function formatDate(value){if(!value)return"暂无";const date=new Date(`${value.replace(" ","T")}Z`);return Number.isNaN(date.getTime())?value:date.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});}
 render();
