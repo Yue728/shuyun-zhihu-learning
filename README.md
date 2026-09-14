@@ -1,100 +1,128 @@
-# vinext-starter
+# 数蕴 MATHESIS
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+让每一个“为什么”，抵达“所以”。
 
-## Prerequisites
+数蕴是一款以教师为主入口、以学生学习表现为验证闭环的 AI 教学辅助产品。它通过知乎开放平台寻找真实问题、多元解释和教学经验，再经过教材对齐与教师审核，转化为可追溯、可教学、可验证的数学学习路径。
 
-- Node.js `>=22.13.0`
+如果学生答对了一道题，却说不清为什么，他真的理解了吗？
 
-## Quick Start
+[在线体验](https://shuyun-zhihu-learning.cynb0728.chatgpt.site/) · [阅读品牌故事](https://shuyun-zhihu-learning.cynb0728.chatgpt.site/story)
+
+![数蕴项目封面](public/assets/shuyun-hackathon-cover-v4.png)
+
+## 为什么做数蕴。
+
+通用 AI 很容易给出一个完整答案，但教学真正困难的部分并不是“有没有答案”。教师需要判断内容是否准确、是否符合教材、是否适合当前学生。学生则需要在解释、作答和迁移中建立自己的理解。
+
+知乎社区沉淀了大量真实追问、专业解释和一线经验。数蕴不把这些内容简单摘要给学生，而是让它们经过一条有责任边界的教学链路。
+
+## 产品如何工作。
+
+1. 教师输入一个具体教学问题，例如“一次函数中，为什么 k 小于 0 时图像下降”。
+2. 系统调用知乎开放平台，检索相关回答、文章和真实困惑。
+3. AI 将候选内容与教材知识点对齐，并提炼成多种讲法、真实错因和诊断变式。
+4. 教师查看原始来源、审核内容并确认是否进入课程资产。
+5. 学生在“看图理解、生活比喻、反例辨析”等不同解释中继续思考。
+6. 系统记录学生选择、作答与迁移表现，帮助教师复盘学情。
+
+这条路径可以概括为：`∵ 真实问题 → 多元解释 → 教师判断 → 学生验证 ∴ 理解成立`。
+
+## 核心价值。
+
+### 教师拥有最终判断权。
+
+AI 负责检索、对齐与提炼。教师可以查看知乎原始来源、编辑生成结果，并决定哪些内容可以进入课堂。
+
+### 知乎内容进入真实教学流程。
+
+知乎在产品中不是一个内容标签。它提供学生真实困惑、专业答主解释和教师实践经验，帮助教师找到同一知识点的不同认知入口。
+
+### 学生端不是答案展示页。
+
+学生端通过“再讲一种”、苏格拉底式追问和迁移题，让学生继续作答。学生的表现会回到教师端，形成教学效果闭环。
+
+### 每一步都可以追溯。
+
+系统保留知乎来源、教材对齐、AI 提炼和教师确认状态。教师能够知道内容从哪里来，也能知道是谁决定它进入课堂。
+
+## 当前 Demo。
+
+当前版本围绕人教版八年级数学“一次函数”场景构建，包含以下能力。
+
+- 知乎真实 API 检索。
+- 知乎直答辅助提炼。
+- 来源可信度与教材一致性审核界面。
+- 三种差异化讲解方式。
+- 真实错因与诊断变式生成。
+- 教师确认与课程资产沉淀。
+- 学生端解释切换、追问和答题反馈。
+- 匿名测试事件与学情趋势复盘。
+- 独立但非强制的品牌故事页。
+
+当前记录主要用于产品联调和模拟师生测试，不代表已经完成真实课堂效果验证。
+
+## 技术结构。
+
+```text
+教师端 / 学生端
+       │
+React 19 + vinext
+       │
+Cloudflare Worker API
+   ┌───┴────────────┐
+知乎开放平台       Cloudflare D1
+搜索与直答         匿名测试事件
+```
+
+项目使用 React 19、TypeScript、vinext、Cloudflare Worker 和 D1。知乎 Access Secret 只保存在服务端运行环境中，不会发送到浏览器，也不会提交到仓库。
+
+## 本地运行。
+
+环境要求为 Node.js `>=22.13.0`。
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+打开 `http://localhost:3000` 查看教师端，打开 `http://localhost:3000/story` 查看品牌故事页。
 
-## Included Shape
+没有配置知乎密钥时，界面仍可使用审核缓存内容进行演示。需要联调真实 API 时，在受控的服务端环境中配置 `ZHIHU_ACCESS_SECRET`，不要把真实值写入源码或提交记录。
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+## 构建与测试。
 
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm test
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+测试会执行生产构建，并验证产品首页、品牌故事页、API 安全边界和客户端集成标记。
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## 主要目录。
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+```text
+app/                 产品页面、交互与品牌故事。
+worker/              知乎 API 代理与匿名分析接口。
+db/ 和 drizzle/      D1 数据结构与迁移。
+public/assets/        品牌图形和展示素材。
+tests/                渲染与安全边界测试。
+.openai/hosting.json  OpenAI Sites 项目标识与绑定声明。
+```
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## 安全边界。
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+- 不要把知乎 Access Secret、GitHub Token 或部署凭据提交到仓库。
+- 所有知乎开放平台请求都应由服务端发起。
+- 学情记录使用匿名会话标识，不采集学生姓名。
+- 模拟测试结果必须明确标注，不应表述为真实课堂效果。
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+## 项目状态。
 
-## Useful Commands
+数蕴目前是可运行的比赛 Demo。教师端主流程、学生端闭环、知乎真实 API 和公网部署已经打通。下一阶段重点是引入真实教师试用、收集课堂样本，并验证不同解释方式对迁移表现的影响。
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+## 品牌主张。
 
-## Learn More
+数蕴不替教师做决定，也不替学生完成思考。
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+AI 寻找与提炼。教师审核与选择。学生回答与迁移。
+
+∵ 每一个值得追问的问题，都应该有机会抵达 ∴ 真正成立的理解。
