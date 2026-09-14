@@ -29,6 +29,15 @@ test("health endpoint does not expose secrets", async () => {
   assert.deepEqual(await response.json(), { ok: true, zhihuConfigured: false, analyticsConfigured: false });
 });
 
+test("server-renders the optional brand story without gating the product", async () => {
+  const response = await render("/story");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /数蕴 MATHESIS/);
+  assert.match(html, /让每一个.*为什么/);
+  assert.match(html, /进入知识炼金台/);
+});
+
 test("alchemy endpoint requires a server-side secret", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("alchemy-test", `${process.pid}-${Date.now()}`);
@@ -58,6 +67,8 @@ test("ships API-aware client and social metadata", async () => {
   assert.match(appJs, /X-Shuyun-Source/);
   assert.match(appJs, /教学相关度/);
   assert.match(appJs, /source.*simulation/);
+  assert.match(appJs, /href="\/story"/);
+  assert.match(appJs, /initialView/);
   assert.doesNotMatch(appJs, /\+18%/);
   assert.doesNotMatch(appJs, /隔周迁移<\/span><b>72%/);
 });
