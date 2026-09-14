@@ -93,16 +93,19 @@ const worker = {
           return json({ message: messages[payload.Code ?? 0] ?? payload.Message ?? "知乎 API 请求失败" }, response.ok ? 502 : response.status);
         }
         const strip = (value: unknown) => String(value ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-        const items = (payload.Data?.Items ?? []).slice(0, 3).map((item) => ({
-          title: strip(item.Title).slice(0, 120),
-          excerpt: strip(item.ContentText).slice(0, 180),
-          author: strip(item.AuthorName).slice(0, 40),
-          contentType: strip(item.ContentType).slice(0, 20),
-          votes: Number(item.VoteUpCount) || 0,
-          authority: strip(item.AuthorityLevel) || "1",
-          date: Number(item.EditTime) ? new Date(Number(item.EditTime) * 1000).toISOString().slice(0, 10) : "",
-          url: safeZhihuUrl(item.Url),
-        }));
+        const items = (payload.Data?.Items ?? []).slice(0, 3).map((item) => {
+          const result = {
+            title: strip(item.Title).slice(0, 120),
+            excerpt: strip(item.ContentText).slice(0, 180),
+            author: strip(item.AuthorName).slice(0, 40),
+            contentType: strip(item.ContentType).slice(0, 20),
+            votes: Number(item.VoteUpCount) || 0,
+            authority: strip(item.AuthorityLevel) || "1",
+            date: Number(item.EditTime) ? new Date(Number(item.EditTime) * 1000).toISOString().slice(0, 10) : "",
+            url: safeZhihuUrl(item.Url),
+          };
+          return { ...result, relevanceScore: teachingRelevance(query, result) };
+        }).sort((a, b) => b.relevanceScore - a.relevanceScore || b.votes - a.votes);
         ctx.waitUntil(logEvent(env, request, { actor: "teacher", eventType: "search", topic: query, success: true, latencyMs: Date.now() - startedAt }));
         return json({ items, source: "zhihu-open-api", query }, 200, { "Cache-Control": "public, max-age=60" });
       } catch {
@@ -185,6 +188,11 @@ const worker = {
       if (request.method !== "GET") return json({ message: "仅支持 GET 请求" }, 405);
       if (!env.DB) return json({ message: "学习记录数据库尚未启用" }, 503);
       try {
+        const source = url.searchParams.get("source") === "simulation" ? "simulation" : "";
+        const run = cleanText(url.searchParams.get("run"), 100);
+        const scoped = source === "simulation" && Boolean(run);
+        const where = scoped ? " WHERE source_kind = ? AND run_id = ?" : "";
+        const bindings = scoped ? [source, run] : [];
         const summary = await env.DB.prepare(`SELECT
           COUNT(*) AS totalEvents,
           COUNT(DISTINCT session_id) AS sessions,
@@ -199,15 +207,19 @@ const worker = {
           ROUND(AVG(CASE WHEN event_type = 'alchemy' AND success = 1 THEN latency_ms END)) AS avgGenerationMs,
           SUM(CASE WHEN source_kind = 'simulation' THEN 1 ELSE 0 END) AS simulationEvents,
           MAX(created_at) AS lastEventAt
-        FROM test_events`).first<Record<string, unknown>>();
+        FROM test_events${where}`).bind(...bindings).first<Record<string, unknown>>();
+        const modeWhere = scoped ? "mode != '' AND source_kind = ? AND run_id = ?" : "mode != ''";
         const modesResult = await env.DB.prepare(`SELECT mode, COUNT(*) AS views,
           SUM(CASE WHEN event_type = 'answer' THEN 1 ELSE 0 END) AS answers,
           SUM(CASE WHEN event_type = 'answer' AND correct = 1 THEN 1 ELSE 0 END) AS correctAnswers
-          FROM test_events WHERE mode != '' GROUP BY mode ORDER BY views DESC`).all<Record<string, unknown>>();
+          FROM test_events WHERE ${modeWhere} GROUP BY mode ORDER BY views DESC`).bind(...bindings).all<Record<string, unknown>>();
         return json({
           summary: normalizeSummary(summary ?? {}),
           modes: (modesResult.results ?? []).map((row) => ({ mode: cleanText(row.mode, 20), views: toNumber(row.views), answers: toNumber(row.answers), correctAnswers: toNumber(row.correctAnswers) })),
-          disclosure: "包含模拟师生行为与交互演示记录，不代表真实课堂学习效果。",
+          scope: scoped ? { source, run } : { source: "all", run: "all" },
+          disclosure: scoped
+            ? `仅统计模拟测试批次 ${run}；用于验证产品流程，不代表真实课堂学习效果。`
+            : "包含模拟师生行为与交互演示记录，不代表真实课堂学习效果。",
         });
       } catch {
         return json({ message: "学习趋势读取失败" }, 500);
@@ -238,6 +250,21 @@ function safeZhihuUrl(value: unknown): string {
   } catch {
     return "https://www.zhihu.com/";
   }
+}
+
+function teachingRelevance(query: string, item: { title: string; excerpt: string; votes: number }): number {
+  const haystack = `${item.title} ${item.excerpt}`.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  const concepts = ["一次函数", "函数", "图像", "斜率", "截距", "增减性", "平移", "路程", "时间", "应用", "易错", "错因", "教学", "学生", "k", "b"];
+  const queryConcepts = concepts.filter((term) => normalizedQuery.includes(term));
+  const matched = queryConcepts.filter((term) => haystack.includes(term)).length;
+  let score = 38 + Math.min(32, matched * 8);
+  if (/初中|初二|八年级|中考/.test(haystack)) score += 10;
+  if (normalizedQuery.includes("一次函数") && item.title.includes("一次函数")) score += 12;
+  if (/知识点|题型|易错|教学|运用|应用|怎么|吃力|提升/.test(item.title)) score += 5;
+  if (!/高中|高考|大学/.test(normalizedQuery) && /高中|高考|大学/.test(item.title)) score -= 24;
+  score += Math.min(3, Math.floor(Math.log10(Math.max(1, item.votes + 1))));
+  return Math.max(20, Math.min(99, score));
 }
 
 function json(payload: unknown, status = 200, headers: Record<string, string> = {}): Response {

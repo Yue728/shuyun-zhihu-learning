@@ -56,6 +56,8 @@ test("ships API-aware client and social metadata", async () => {
   assert.match(appJs, /\/api\/zhihu\/alchemy/);
   assert.match(appJs, /\/api\/analytics\/summary/);
   assert.match(appJs, /X-Shuyun-Source/);
+  assert.match(appJs, /教学相关度/);
+  assert.match(appJs, /source.*simulation/);
   assert.doesNotMatch(appJs, /\+18%/);
   assert.doesNotMatch(appJs, /隔周迁移<\/span><b>72%/);
 });

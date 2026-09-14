@@ -25,6 +25,7 @@ const sessionId = crypto.randomUUID();
 const testParams = new URLSearchParams(location.search);
 const testSource = testParams.get("test") === "simulation" ? "simulation" : "interactive";
 const testRun = (testParams.get("run") || "interactive").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "interactive";
+let analyticsViewRecorded = false;
 const state = { view: "forge", selectedSource: "visual", sourceFilter: "all", pipeline: 2, explanationMode: "visual", confirmed: false, studentMode: "analogy", studentAnswer: "", studentResult: "", toast: "", liveQuery: "一次函数 k 正负 增减性", liveStatus: "idle", liveMessage: "点击同步，获取知乎当前真实内容", aiStatus: "idle", aiMessage: "选择一条来源后，交给知乎直答生成教学资产", alchemySummary: "在一次函数 y = kx + b 中，k 表示 x 每增加 1 时 y 的变化量。先固定从左向右观察：k > 0 时 y 增加，图像上升；k < 0 时 y 减少，图像下降。b 只决定直线与 y 轴的交点，不决定增减性。", analyticsStatus: "idle", analyticsMessage: "进入页面后读取真实记录", analytics: null, analyticsModes: [] };
 const navItems = [["forge","知识炼金台","flask"],["assets","课程资产","book"],["path","学习路径","nodes"],["diagnosis","诊断与变式","file"],["review","学情复盘","chart"]];
 
@@ -109,7 +110,7 @@ async function handleAction(action) {
       const response=await fetch(`/api/zhihu/search?q=${encodeURIComponent(query)}`,{headers:testHeaders({Accept:"application/json"})});
       const payload=await response.json(); if(!response.ok)throw new Error(payload.message||"知乎 API 暂时不可用");
       if(!payload.items?.length)throw new Error("没有检索到匹配内容，请换个关键词");
-      sources=payload.items.map((item,index)=>({id:`live-${index}`,kind:index===0?"高相关回答":index===1?"社区观点":"教学素材",tone:["blue","violet","green"][index%3],title:item.title,excerpt:item.excerpt||"打开原文查看完整内容",author:item.author||"知乎用户",meta:`知乎${item.contentType||"内容"} · ${item.votes||0} 赞同 · 权威 ${item.authority||1}`,date:item.date||"刚刚同步",url:item.url}));
+      sources=payload.items.map((item,index)=>({id:`live-${index}`,kind:index===0?"教学优先":index===1?"社区观点":"补充素材",tone:["blue","violet","green"][index%3],title:item.title,excerpt:item.excerpt||"打开原文查看完整内容",author:item.author||"知乎用户",meta:`教学相关度 ${item.relevanceScore||"—"} · ${item.votes||0} 赞同 · 权威 ${item.authority||1}`,date:item.date||"刚刚同步",url:item.url}));
       state.selectedSource=sources[0].id;state.sourceFilter="all";state.pipeline=1;state.liveStatus="success";state.liveMessage=`已通过真实 API 同步 ${sources.length} 条 · ${new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;state.aiStatus="idle";state.aiMessage="已选择实时来源，点击 AI 提炼生成教学资产";render();
     }catch(error){sources=[...cachedSources];state.selectedSource="visual";state.sourceFilter="all";state.liveStatus="error";state.liveMessage=`${error.message}；已切回缓存演示数据`;render();}
   }
@@ -117,7 +118,7 @@ async function handleAction(action) {
 
 function testHeaders(extra={}){return {...extra,"X-Shuyun-Session":sessionId,"X-Shuyun-Run":testRun,"X-Shuyun-Source":testSource};}
 async function postEvent(payload){try{await fetch("/api/analytics/event",{method:"POST",headers:testHeaders({"Content-Type":"application/json"}),body:JSON.stringify(payload)});}catch{} }
-async function loadAnalytics(){state.analyticsStatus="loading";state.analyticsMessage="正在读取真实记录";render();try{const response=await fetch("/api/analytics/summary",{headers:testHeaders({Accept:"application/json"})});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"读取失败");state.analytics=payload.summary;state.analyticsModes=payload.modes||[];state.analyticsDisclosure=payload.disclosure;state.analyticsStatus="success";state.analyticsMessage="已读取最新记录";postEvent({actor:"teacher",eventType:"review_view",topic:state.liveQuery});render();}catch(error){state.analyticsStatus="error";state.analyticsMessage=error.message;render();}}
+async function loadAnalytics(){state.analyticsStatus="loading";state.analyticsMessage="正在读取真实记录";render();try{const params=new URLSearchParams();if(testSource==="simulation"){params.set("source","simulation");params.set("run",testRun);}const endpoint=`/api/analytics/summary${params.size?`?${params}`:""}`;const response=await fetch(endpoint,{headers:testHeaders({Accept:"application/json"})});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"读取失败");state.analytics=payload.summary;state.analyticsModes=payload.modes||[];state.analyticsDisclosure=payload.disclosure;state.analyticsStatus="success";state.analyticsMessage="已读取最新记录";if(!analyticsViewRecorded){analyticsViewRecorded=true;postEvent({actor:"teacher",eventType:"review_view",topic:state.liveQuery});}render();}catch(error){state.analyticsStatus="error";state.analyticsMessage=error.message;render();}}
 function modeName(mode){return ({visual:"看图理解",analogy:"生活比喻",counter:"反例辨析"})[mode]||mode;}
 function formatMs(value){return value?value>=1000?`${(value/1000).toFixed(1)} 秒`:`${value} 毫秒`:"暂无";}
 function formatDate(value){if(!value)return"暂无";const date=new Date(`${value.replace(" ","T")}Z`);return Number.isNaN(date.getTime())?value:date.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});}
