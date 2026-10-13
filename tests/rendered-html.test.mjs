@@ -4,7 +4,7 @@ import test from "node:test";
 
 async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
     new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
@@ -13,62 +13,46 @@ async function render(path = "/") {
   );
 }
 
-test("server-renders the Shuyun application shell", async () => {
+test("server-renders the original Shuyun product", async () => {
   const response = await render();
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>数蕴 · 知乎知识炼金助教<\/title>/i);
-  assert.match(html, /id="app"/);
-  assert.match(html, /id="app"/);
+  assert.match(html, /<title>数蕴 · 专属课程 AI 助教<\/title>/i);
+  assert.match(html, /一次函数/);
+  assert.match(html, /课程资产/);
 });
 
-test("health endpoint does not expose secrets", async () => {
-  const response = await render("/api/health");
+test("renders the product introduction", async () => {
+  const response = await render("/about");
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, zhihuConfigured: false, analyticsConfigured: false });
+  const html = await response.text();
+  assert.match(html, /让 AI 理解一门课/);
+  assert.match(html, /教练同源/);
 });
 
-test("server-renders the optional brand story without gating the product", async () => {
+test("renders the brand story", async () => {
   const response = await render("/story");
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /数蕴 MATHESIS/);
   assert.match(html, /让每一个.*为什么/);
-  assert.match(html, /进入知识炼金台/);
+  assert.match(html, /为教师保留判断/);
 });
 
-test("alchemy endpoint requires a server-side secret", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("alchemy-test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  const response = await worker.fetch(
-    new Request("http://localhost/api/zhihu/alchemy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: "一次函数", source: { title: "测试", excerpt: "用于测试的有效来源摘要内容", url: "https://www.zhihu.com/question/1" } }) }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
-  assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { message: "服务端尚未配置知乎 Access Secret" });
+test("health endpoint reports only product infrastructure", async () => {
+  const response = await render("/api/health");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, product: "shuyun", storageConfigured: false });
 });
 
-test("ships API-aware client and social metadata", async () => {
-  const [css, layout, packageJson, appJs] = await Promise.all([
-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../app/shuyun-app.js", import.meta.url), "utf8"),
-  ]);
-  assert.match(css, /live-search/);
-  assert.match(layout, /shuyun-hackathon-cover-v4/);
-  assert.match(packageJson, /shuyun-zhihu-teaching-assistant/);
-  assert.match(appJs, /\/api\/zhihu\/search/);
-  assert.match(appJs, /\/api\/zhihu\/alchemy/);
-  assert.match(appJs, /\/api\/analytics\/summary/);
-  assert.match(appJs, /X-Shuyun-Source/);
-  assert.match(appJs, /教学相关度/);
-  assert.match(appJs, /source.*simulation/);
-  assert.match(appJs, /href="\/story"/);
-  assert.match(appJs, /initialView/);
-  assert.doesNotMatch(appJs, /\+18%/);
-  assert.doesNotMatch(appJs, /隔周迁移<\/span><b>72%/);
+test("removed integrations do not remain in tracked product source", async () => {
+  const files = await Promise.all([
+    "../app/layout.tsx", "../app/components/AppShell.tsx", "../app/story/page.tsx",
+    "../app/about/page.tsx", "../worker/index.ts", "../README.md", "../package.json",
+  ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
+  const source = files.join("\n").toLowerCase();
+  const removedTerms = ["zhi" + "hu", "黑客" + "松", "hack" + "athon", "知识" + "炼金"];
+  for (const term of removedTerms) assert.equal(source.includes(term), false);
+  assert.match(source, /专属课程 ai 助教/);
+  assert.match(source, /教练同源/);
 });

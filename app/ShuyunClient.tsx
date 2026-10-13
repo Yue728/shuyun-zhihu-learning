@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { AppShell } from "./components/AppShell";
 
 export function ShuyunClient() {
-  useEffect(() => {
-    void import("./shuyun-app.js");
-  }, []);
-
-  return <div id="app" />;
+  return <AppShell />;
 }

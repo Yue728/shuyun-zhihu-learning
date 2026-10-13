@@ -1,5 +1,5 @@
 {
-  "name": "shuyun-zhihu-teaching-assistant",
+  "name": "shuyun-course-ai-assistant",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
+    "lucide-react": "^1.55.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-loading-skeleton": "3.5.0"

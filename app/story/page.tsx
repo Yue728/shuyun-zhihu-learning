@@ -1,85 +1,37 @@
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import "./story.css";
 
 export const metadata: Metadata = {
-  title: "数蕴 MATHESIS｜品牌故事",
-  description: "让每一个为什么，抵达所以。了解数蕴如何把知乎社区认知转化为可审核、可教学、可验证的学习路径。",
-  openGraph: {
-    title: "数蕴 MATHESIS｜让每一个为什么，抵达所以",
-    description: "从真实问题出发，经由多元解释、教师判断与学生验证，让理解真正发生。",
-    images: [{ url: "/assets/shuyun-hackathon-cover-v4.png", width: 1260, height: 700 }],
-  },
+  title: "品牌故事 · 数蕴 MATHESIS",
+  description: "数蕴相信，数学学习不是得到答案，而是从为什么走到所以。",
 };
 
 const passage = [
-  ["01", "真实问题", "从具体的困惑开始"],
-  ["02", "多元解释", "在知乎寻找不同入口"],
-  ["03", "教材边界", "回到准确的知识结构"],
-  ["04", "教师判断", "决定什么适合这门课"],
-  ["05", "学生作答", "让理解留下证据"],
-  ["06", "迁移验证", "在新问题中再次成立"],
+  ["01", "材料", "老师真正使用的教材与讲义"],
+  ["02", "目标", "这一课希望学生真正会什么"],
+  ["03", "方法", "课堂里被反复验证的教法"],
+  ["04", "作答", "学生如何理解、犯错与订正"],
+  ["05", "证据", "什么解释与训练真正有效"],
+  ["06", "复盘", "把判断带回下一次教学"],
 ];
 
 export default function StoryPage() {
   return (
-    <main className="story-book" id="story-top">
-      <header className="story-nav">
-        <a className="story-brand" href="/" aria-label="返回数蕴知识炼金台">
-          <img src="/assets/shuyun-icon.svg" alt="数蕴标志" />
-          <span><b>数蕴</b><small>MATHESIS</small></span>
-        </a>
-        <nav aria-label="品牌故事导航">
-          <a href="#belief">为什么</a><a href="#passage">如何发生</a>
-          <a className="enter-product" href="/">进入知识炼金台 <span>→</span></a>
-        </nav>
-      </header>
+    <main className="story-book">
+      <nav className="story-nav"><a href="/" className="story-brand"><img src="/assets/shuyun-icon.svg" alt="" /><div><b>数蕴</b><small>MATHESIS</small></div></a><div><a href="/about">产品介绍</a><a className="enter-product" href="/">进入工作台 <ArrowRight size={16} /></a></div></nav>
 
-      <section className="story-cover">
-        <div className="cover-copy">
-          <div className="story-index"><span>数蕴品牌故事 · 2026</span><span>FROM BECAUSE TO THEREFORE</span></div>
-          <div><h1>数蕴</h1><p className="cover-en">MATHESIS</p><p className="cover-line">让每一个“为什么”，<br />抵达“所以”。</p></div>
-          <div className="cover-actions"><a href="/">进入教师端 <span>→</span></a><a href="#belief">读完这个故事</a></div>
-        </div>
-        <div className="cover-symbol" aria-label="从因为到所以">
-          <span className="because">∵</span><img src="/assets/shuyun-icon.svg" alt="数蕴因果标志" /><span className="therefore">∴</span>
-          <p>问题不是起点的装饰<br />而是理解发生的原因</p>
-        </div>
-      </section>
+      <section className="story-cover"><div className="cover-copy"><p>数学里，蕴含着结构、方法与美感。</p><div><h1>数蕴</h1><span>MATHESIS</span></div><h2>让每一个“为什么”，<br />抵达“所以”。</h2></div><div className="cover-logic"><strong>∵</strong><svg viewBox="0 0 440 230"><path d="M8 201C83 190 128 159 185 145C255 128 301 90 348 61C381 41 406 22 432 10" /><circle cx="8" cy="201" r="5" /><circle cx="185" cy="145" r="5" /><circle cx="348" cy="61" r="5" /><circle cx="432" cy="10" r="6" /></svg><strong>∴</strong><p>问题不是学习的缺口。<br />它是理解开始生长的地方。</p></div></section>
 
-      <section className="story-tension" id="belief">
-        <div className="section-mark"><span>01 / 一个没有抵达的答案</span><span>THE TENSION</span></div>
-        <div className="tension-grid">
-          <div className="question-proof"><small>一次函数 · 课堂追问</small><strong>k &lt; 0 ⇒ ?</strong><p>“因为 k &lt; 0，<br />所以 y 随 x 增大而减小。”</p><em>可是，为什么？</em></div>
-          <div className="tension-statement"><h2>他答对了。<br />却不知道为什么。</h2><p>正确答案已经出现了很多次，理解却还没有发生。题目换一种表征，记住的口诀便失去了方向。</p><div className="belief-pair"><span>答案结束一道题</span><b>理解开始下一道题</b></div></div>
-        </div>
-      </section>
+      <section className="story-belief"><div className="story-index"><span>01 / 我们看见</span><span>THE REAL GAP</span></div><div className="belief-layout"><div><h2>学生得到答案，<br />却未必得到理解。</h2><p>一次做对，可能来自记忆；一次做错，也未必只是粗心。真正的教学需要知道：学生在哪里停住，哪一种解释适合他，以及理解能否迁移到新的问题。</p></div><blockquote><span>“会做”</span><i>≠</i><strong>“会解释”</strong><span>“看懂”</span><i>≠</i><strong>“会迁移”</strong></blockquote></div></section>
 
-      <section className="story-mine">
-        <div className="section-mark"><span>02 / 真实问题是一条认知矿脉</span><span>ZHIHU × MATHESIS</span></div>
-        <div className="mine-grid">
-          <div className="question-field" aria-label="来自真实学习情境的问题"><i className="question-path" aria-hidden="true" /><span>斜率到底是什么？</span><span>为什么图像会下降？</span><span>有没有生活里的类比？</span><span>这句话哪里容易误解？</span></div>
-          <div><h2>真实的“不会”，<br />藏着更好的讲法。</h2><p>知乎里有学生的追问、教师的经验、专业答主的解释，也有需要辨别的噪声。价值不在内容数量，而在能否把多元认知带回教材和课堂。</p><div className="source-rule"><span>社区提供真实语境</span><span>教材提供边界</span><span>教师决定什么进入课堂</span></div></div>
-        </div>
-      </section>
+      <section className="story-name"><div className="story-index"><span>02 / 名字从哪里来</span><span>THE NAME</span></div><div className="name-layout"><div className="name-mark"><span>数</span><i /><span>蕴</span></div><div><h2>数，是数学。<br />蕴，是其中没有被说尽的东西。</h2><p>它可能是老师多年形成的判断，是一道例题背后的方法模型，是学生反复出错时暴露出的认知边界，也是一个班级逐渐留下的学习证据。</p><p>数蕴希望把这些隐性的东西保存下来，让它们可以被理解、被复用，也被新的课堂继续修正。</p></div></div></section>
 
-      <section className="story-symbol">
-        <div className="section-mark"><span>03 / 一个符号讲完这个故事</span><span>BECAUSE TO THEREFORE</span></div>
-        <div className="logic-stage"><div><strong>∵</strong><span>真实问题</span></div><div className="logic-route" aria-label="寻找另一种讲法，经过判断，接受验证"><i /><i /><i /><p>寻找另一种讲法<br />经过判断 · 接受验证</p></div><div><strong>∴</strong><span>理解成立</span></div></div>
-        <h2>数蕴不占据推理的中心。<br />它让问题与理解建立关系。</h2>
-      </section>
+      <section className="story-symbol"><div className="story-index"><span>03 / 一个符号讲完这个故事</span><span>BECAUSE TO THEREFORE</span></div><div className="logic-stage"><div><strong>∵</strong><span>为什么</span></div><div className="logic-route"><i /><i /><i /><p>课程上下文 · 教师判断 · 学习证据</p></div><div><strong>∴</strong><span>所以</span></div></div><h2>AI 不占据推理的中心。<br />它帮助老师和学生走完中间那条路。</h2></section>
 
-      <section className="story-passage" id="passage">
-        <div className="section-mark"><span>04 / 理解如何发生</span><span>TRACEABLE · TEACHABLE · TESTABLE</span></div>
-        <h2>从一条回答，<br />到一份可以进入课堂的理解。</h2>
-        <div className="passage-line">{passage.map(([number, title, detail]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{detail}</p></article>)}</div>
-        <div className="human-rule"><p><span>AI</span><b>寻找与提炼</b><small>把散落认知带到眼前</small></p><p><span>师</span><b>审核与选择</b><small>决定什么适合这门课</small></p><p><span>生</span><b>回答与迁移</b><small>用表现证明理解发生</small></p></div>
-      </section>
+      <section className="story-passage"><div className="story-index"><span>04 / 一门课如何留下记忆</span><span>COURSE MEMORY</span></div><h2>不是每次从空白开始，<br />而是在每次教学之后更懂这门课。</h2><div className="passage-line">{passage.map(([number, title, detail]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{detail}</p></article>)}</div></section>
 
-      <section className="story-finale">
-        <img src="/assets/shuyun-icon.svg" alt="数蕴标志" /><h2>让每一个“为什么”，<br />抵达“所以”。</h2><p>为教师保留判断。为学生保留思考。</p>
-        <div><a href="/">进入知识炼金台 <span>→</span></a><a href="/?view=student">体验学生端</a></div>
-        <footer><span>数蕴 · MATHESIS</span><span>知乎知识炼金助教</span></footer>
-      </section>
+      <section className="story-promise"><img src="/assets/shuyun-icon.svg" alt="数蕴标志" /><h2>为教师保留判断。<br />为学生保留思考。</h2><p>懂你的课，才懂怎样教。</p><div><a href="/">进入数蕴 <ArrowRight size={17} /></a><a href="/about">阅读产品介绍</a></div><footer><span>数蕴 · MATHESIS</span><span>专属课程 AI 助教</span></footer></section>
     </main>
   );
 }

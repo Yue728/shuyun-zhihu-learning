@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "shuyun-zhihu-learning",
+  "name": "shuyun-mathesis",
   "workers_dev": true,
   "preview_urls": false,
   "main": "dist/server/index.js",

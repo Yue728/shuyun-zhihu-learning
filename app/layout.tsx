@@ -2,17 +2,23 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://shuyun-zhihu-learning.cynb0728.chatgpt.site"),
-  title: "数蕴 · 知乎知识炼金助教",
-  description: "将知乎社区中的优质解释、真实困惑与教学经验，转化为可理解、可练习、可诊断的数学学习路径。",
+  metadataBase: new URL("https://shuyun-mathesis.workers.dev"),
+  title: "数蕴 · 专属课程 AI 助教",
+  description: "围绕教师自己的课程材料、教学目标与班级学情，形成教、练、测、评、改的持续闭环。",
   icons: {
     icon: "/assets/shuyun-icon.svg",
     shortcut: "/assets/shuyun-icon.svg",
   },
   openGraph: {
-    title: "数蕴 · 知乎知识炼金助教",
-    description: "将知乎社区智慧转化为可追溯、可教学、可诊断的学习路径。",
-    images: [{ url: "/assets/shuyun-hackathon-cover-v4.png", width: 1260, height: 700 }],
+    title: "数蕴 · 专属课程 AI 助教",
+    description: "让 AI 理解一门课，而不只是回答一道题。",
+    images: [{ url: "/og.png", width: 1680, height: 945, alt: "数蕴 · 懂你的课，才懂怎样教" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "数蕴 · 专属课程 AI 助教",
+    description: "让 AI 理解一门课，而不只是回答一道题。",
+    images: ["/og.png"],
   },
 };
 
